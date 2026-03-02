@@ -4,45 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>RagilMoney Pro</title>
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
-        
-        body { 
-            background: #020617; 
-            color: #f8fafc; 
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            overflow: hidden; 
-            height: 100vh;
-        }
-
-        .glass { 
-            background: rgba(30, 41, 59, 0.75); 
-            backdrop-filter: blur(20px); 
-            border: 1px solid rgba(255, 255, 255, 0.08); 
-        }
-
-        /* Area Scroll Khusus Riwayat */
-        .scroll-area {
-            height: calc(100vh - 380px);
-            overflow-y: auto;
-            padding-bottom: 120px;
-        }
+        body { background: #020617; color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; overflow: hidden; height: 100vh; }
+        .glass { background: rgba(30, 41, 59, 0.75); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .scroll-area { height: calc(100vh - 420px); overflow-y: auto; padding-bottom: 150px; }
         .scroll-area::-webkit-scrollbar { display: none; }
-
         .income-text { color: #22c55e; }
         .expense-text { color: #ef4444; }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-item { animation: slideUp 0.3s ease-out forwards; }
-
-        /* Mencegah zoom otomatis pada input iOS */
+        .tab-active { background: #3b82f6; color: white; }
         input { font-size: 16px !important; }
     </style>
 </head>
@@ -53,8 +25,8 @@
             💰 <span id="user-name-display">USER</span><span class="text-blue-500">MONEY</span>
         </h1>
         <div class="mt-6">
-            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-[0.3em]">Saldo Saat Ini</p>
-            <h2 id="balance" class="text-5xl font-black mt-1 tracking-tighter transition-all">Rp 0</h2>
+            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-[0.3em]">Total Saldo</p>
+            <h2 id="balance" class="text-5xl font-black mt-1 tracking-tighter">Rp 0</h2>
         </div>
     </div>
 
@@ -66,48 +38,49 @@
                 <button onclick="changeName()" class="text-[9px] bg-slate-800 text-gray-400 px-3 py-1.5 rounded-full font-bold italic">NAMA ✏️</button>
             </div>
         </div>
-        
-        <div id="list" class="scroll-area space-y-3">
-            </div>
+        <div id="list" class="scroll-area space-y-3"></div>
     </div>
 
     <div class="glass fixed bottom-0 left-0 right-0 p-6 pb-8 rounded-t-[2.5rem] shadow-[0_-15px_50px_rgba(0,0,0,0.6)]">
-        <div class="flex gap-3 mb-4">
-            <input type="text" id="desc" placeholder="Belanja apa?" 
-                class="flex-1 p-4 bg-slate-900/60 rounded-2xl border border-white/5 outline-none focus:ring-2 focus:ring-blue-500 text-sm">
-            <input type="number" id="amount" placeholder="Jumlah" 
-                class="w-1/3 p-4 bg-slate-900/60 rounded-2xl border border-white/5 outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+        <div class="flex bg-slate-900/80 p-1 rounded-2xl mb-4">
+            <button id="btn-pemasukan" onclick="setType('pemasukan')" class="flex-1 py-2 text-xs font-bold rounded-xl transition tab-active">PEMASUKAN</button>
+            <button id="btn-pengeluaran" onclick="setType('pengeluaran')" class="flex-1 py-2 text-xs font-bold rounded-xl transition text-gray-500">PENGELUARAN</button>
         </div>
-        <button onclick="addTransaction()" 
-            class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl shadow-lg shadow-blue-600/20 active:scale-95 transition-all text-sm tracking-widest">
-            SIMPAN TRANSAKSI 🚀
+
+        <div class="flex gap-3 mb-4">
+            <input type="text" id="desc" placeholder="Keterangan..." class="flex-1 p-4 bg-slate-900/60 rounded-2xl border border-white/5 outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+            <input type="number" id="amount" placeholder="Jumlah" class="w-1/3 p-4 bg-slate-900/60 rounded-2xl border border-white/5 outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+        </div>
+        <button onclick="addTransaction()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl shadow-lg active:scale-95 transition-all text-sm">
+            SIMPAN CATATAN 🚀
         </button>
     </div>
 
     <script>
-        // 1. Inisialisasi Nama
-        let userName = localStorage.getItem('ragil_user_name');
-        if (!userName) {
-            userName = prompt("Nama Tuan Siapa?", "RAGIL");
-            userName = userName ? userName.toUpperCase() : "RAGIL";
-            localStorage.setItem('ragil_user_name', userName);
-        }
-
-        // 2. Inisialisasi Data Transaksi
+        let currentType = 'pemasukan';
+        let userName = localStorage.getItem('ragil_user_name') || "RAGIL";
         let transactions = JSON.parse(localStorage.getItem('ragil_money')) || [];
 
+        function setType(type) {
+            currentType = type;
+            const btnIn = document.getElementById('btn-pemasukan');
+            const btnOut = document.getElementById('btn-pengeluaran');
+            if(type === 'pemasukan') {
+                btnIn.className = "flex-1 py-2 text-xs font-bold rounded-xl transition tab-active";
+                btnOut.className = "flex-1 py-2 text-xs font-bold rounded-xl transition text-gray-500";
+            } else {
+                btnOut.className = "flex-1 py-2 text-xs font-bold rounded-xl transition bg-red-600 text-white";
+                btnIn.className = "flex-1 py-2 text-xs font-bold rounded-xl transition text-gray-500";
+            }
+        }
+
         function updateNameDisplay() {
-            document.getElementById('user-name-display').innerText = userName;
-            document.title = userName + "MONEY | PRO";
+            document.getElementById('user-name-display').innerText = userName.toUpperCase();
         }
 
         function changeName() {
-            let n = prompt("Ganti nama jadi:", userName);
-            if(n) { 
-                userName = n.toUpperCase(); 
-                localStorage.setItem('ragil_user_name', userName); 
-                updateNameDisplay(); 
-            }
+            let n = prompt("Ganti nama:", userName);
+            if(n) { userName = n; localStorage.setItem('ragil_user_name', n); updateNameDisplay(); }
         }
 
         function updateDOM() {
@@ -116,28 +89,23 @@
             list.innerHTML = '';
             let total = 0;
 
-            if (transactions.length === 0) {
-                list.innerHTML = `<div class="text-center py-10 opacity-20 text-xs italic italic">Belum ada catatan...</div>`;
-            }
-
-            // Tampilkan dari terbaru
             [...transactions].reverse().forEach((t, index) => {
                 const originalIndex = transactions.length - 1 - index;
-                const isIncome = t.amount > 0;
-                total += t.amount;
+                const isIncome = t.type === 'pemasukan';
+                total += isIncome ? t.amount : -t.amount;
 
                 const item = document.createElement('div');
-                item.className = `glass p-4 rounded-2xl flex justify-between items-center animate-item`;
+                item.className = `glass p-4 rounded-2xl flex justify-between items-center`;
                 item.innerHTML = `
                     <div class="flex flex-col">
-                        <span class="text-sm font-semibold text-gray-200">${t.desc}</span>
+                        <span class="text-sm font-semibold">${t.desc}</span>
                         <span class="text-[9px] text-gray-500 font-bold uppercase tracking-tighter">${t.date}</span>
                     </div>
                     <div class="flex items-center gap-4">
                         <span class="${isIncome ? 'income-text' : 'expense-text'} font-bold text-sm">
-                            ${isIncome ? '+' : ''}${t.amount.toLocaleString('id-ID')}
+                            ${isIncome ? '+' : '-'}${t.amount.toLocaleString('id-ID')}
                         </span>
-                        <button onclick="deleteTransaction(${originalIndex})" class="w-8 h-8 flex items-center justify-center bg-white/5 rounded-lg text-gray-500 text-[10px]">✕</button>
+                        <button onclick="deleteTransaction(${originalIndex})" class="text-gray-600 text-xs">✕</button>
                     </div>
                 `;
                 list.appendChild(item);
@@ -151,11 +119,10 @@
         function addTransaction() {
             const desc = document.getElementById('desc').value;
             const amount = parseInt(document.getElementById('amount').value);
-            
-            if (!desc || isNaN(amount)) return alert("Isi datanya dulu, Tuan! 🥵");
+            if (!desc || isNaN(amount)) return alert("Isi datanya, Tuan! 🥵");
 
-            const date = new Date().toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'});
-            transactions.push({ desc, amount, date });
+            const date = new Date().toLocaleDateString('id-ID', {day:'2-digit', month:'short'});
+            transactions.push({ desc, amount, date, type: currentType });
             
             document.getElementById('desc').value = '';
             document.getElementById('amount').value = '';
@@ -163,30 +130,19 @@
         }
 
         function deleteTransaction(i) {
-            if(confirm("Hapus catatan ini?")) {
-                transactions.splice(i, 1);
-                updateDOM();
-            }
+            if(confirm("Hapus?")) { transactions.splice(i, 1); updateDOM(); }
         }
 
-        // 3. FITUR EKSPOR EXCEL SAKTI
         function exportToExcel() {
-            if (transactions.length === 0) return alert("Data kosong, gak bisa ekspor! ❌");
-
+            if (transactions.length === 0) return alert("Data kosong!");
             const dataExcel = transactions.map((t, i) => ({
-                "NO": i + 1,
-                "TANGGAL": t.date,
-                "KETERANGAN": t.desc,
-                "JUMLAH (IDR)": t.amount
+                "NO": i + 1, "TANGGAL": t.date, "KETERANGAN": t.desc, 
+                "TIPE": t.type.toUpperCase(), "JUMLAH (IDR)": t.type === 'pemasukan' ? t.amount : -t.amount
             }));
-
             const ws = XLSX.utils.json_to_sheet(dataExcel);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Rekap");
-
-            const tgl = new Date().toISOString().split('T')[0];
-            XLSX.writeFile(wb, `REKAP_DUIT_${userName}_${tgl}.xlsx`);
-            alert("Laporan Excel Berhasil Diunduh! 📊✅");
+            XLSX.writeFile(wb, `REKAP_DUIT_${userName}.xlsx`);
         }
 
         updateNameDisplay();
